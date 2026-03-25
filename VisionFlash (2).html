@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Vision Flash</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --rose: #C44F78;
+    --rose-mid: #E8789A;
+    --rose-pale: #FAF0F4;
+    --rose-dark: #7A2045;
+    --gold: #C8963A;
+    --gold-pale: #FDF6E8;
+    --ink: #1A1218;
+    --ink-mid: #5A4858;
+    --ink-light: #9C8899;
+    --cream: #FBF8F5;
+    --surface: #F5F0F2;
+    --border: rgba(180,140,160,0.2);
+    --border-mid: rgba(180,140,160,0.35);
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 22px;
+    --font-display: 'Cormorant Garamond', serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+
+  #app {
+    max-width: 440px;
+    margin: 0 auto;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ─── Background texture ─── */
+  #app::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    max-width: 440px;
+    margin: 0 auto;
+    background:
+      radial-gradient(ellipse 80% 50% at 110% -10%, rgba(196,79,120,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at -10% 90%, rgba(200,150,58,0.06) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .screen {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    padding: 0 20px 32px;
+    position: relative;
+    z-index: 1;
+    animation: fadeIn 0.2s ease;
+  }
+  .screen.active { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ─── Top bar ─── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    padding: 52px 0 20px;
+    gap: 12px;
+  }
+  .topbar-back {
+    background: none;
+    border: none;
+    color: var(--rose);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 400;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 0;
+    letter-spacing: 0.01em;
+  }
+  .topbar-back::before { content: '←'; font-size: 16px; }
+
+  /* ─── Home screen ─── */
+  .home-header { padding: 52px 0 28px; }
+  .home-header .eyebrow {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--rose-mid);
+    margin-bottom: 6px;
+  }
+  .home-header h1 {
+    font-family: var(--font-display);
+    font-size: 44px;
+    font-weight: 300;
+    color: var(--ink);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+  }
+  .home-header h1 em {
+    font-style: italic;
+    color: var(--rose);
+  }
+  .home-header .tagline {
+    font-size: 13px;
+    color: var(--ink-light);
+    margin-top: 8px;
+    line-height: 1.5;
+    font-weight: 300;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    margin-bottom: 12px;
+  }
+
+  .folder-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+  .folder-card {
+    background: white;
+    border: 0.5px solid var(--border-mid);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 1px 8px rgba(100,50,70,0.05);
+  }
+  .folder-card:active { transform: scale(0.97); box-shadow: none; }
+
+  .folder-thumb-strip {
+    width: 100%;
+    height: 72px;
+    display: flex;
+    gap: 2px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .folder-thumb-strip img {
+    flex: 1;
+    height: 100%;
+    object-fit: cover;
+  }
+  .folder-thumb-empty {
+    flex: 1;
+    background: linear-gradient(135deg, var(--rose-pale) 0%, var(--surface) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .folder-thumb-empty-icon {
+    width: 24px;
+    height: 24px;
+    opacity: 0.25;
+  }
+
+  .folder-info { padding: 10px 12px 12px; }
+  .folder-info .name { font-size: 13px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .folder-info .count { font-size: 11px; color: var(--ink-light); margin-top: 2px; }
+
+  .add-folder-card {
+    background: transparent;
+    border: 1px dashed var(--rose-mid);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 20px 12px;
+    color: var(--rose);
+    transition: background 0.15s;
+    min-height: 120px;
+  }
+  .add-folder-card:active { background: var(--rose-pale); }
+  .add-folder-card .plus-circle {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--rose-pale);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 300; line-height: 1;
+    color: var(--rose);
+  }
+  .add-folder-card span { font-size: 12px; font-weight: 500; letter-spacing: 0.02em; }
+
+  /* ─── New Folder screen ─── */
+  .new-folder-body { flex: 1; display: flex; flex-direction: column; gap: 16px; padding-top: 8px; }
+  .field-label { font-size: 12px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-light); margin-bottom: 6px; }
+  input[type="text"] {
+    width: 100%;
+    border: 0.5px solid var(--border-mid);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    font-size: 17px;
+    font-family: var(--font-body);
+    color: var(--ink);
+    background: white;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus { border-color: var(--rose-mid); }
+  input[type="text"]::placeholder { color: var(--ink-light); }
+
+  /* ─── Folder detail screen ─── */
+  .folder-topbar { display: flex; align-items: center; justify-content: space-between; padding: 52px 0 20px; }
+  .folder-topbar h2 {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 400;
+    color: var(--ink);
+    font-style: italic;
+    flex: 1;
+    margin: 0 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .icon-btn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: 0.5px solid var(--border-mid);
+    background: white;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: var(--ink-mid);
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .icon-btn:active { background: var(--surface); }
+  .icon-btn.primary { background: var(--rose); border-color: var(--rose); color: white; }
+  .icon-btn.primary:active { background: var(--rose-dark); }
+
+  .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .photo-cell {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+  }
+  .photo-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-del {
+    position: absolute; top: 4px; right: 4px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.5);
+    border: none;
+    color: white;
+    font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .add-photo-cell {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    border: 1px dashed var(--rose-mid);
+    background: transparent;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer;
+    gap: 4px;
+    color: var(--rose);
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .add-photo-cell .plus { font-size: 22px; font-weight: 300; }
+  .add-photo-cell:active { background: var(--rose-pale); }
+
+  .empty-folder {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; color: var(--ink-light); text-align: center; padding: 40px 20px;
+  }
+  .empty-folder .big-plus { font-size: 48px; font-weight: 200; color: var(--rose-mid); line-height: 1; }
+  .empty-folder p { font-size: 14px; line-height: 1.6; max-width: 220px; }
+
+  /* ─── Player screen ─── */
+  #screen-player { padding: 0; }
+  .player-container { position: relative; flex: 1; overflow: hidden; background: #0A0508; display: flex; align-items: center; justify-content: center; }
+  .player-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    transition: filter 0.05s linear;
+  }
+
+  .player-ui-top {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 52px 20px 20px;
+    background: linear-gradient(to bottom, rgba(10,5,8,0.7) 0%, transparent 100%);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .player-back {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: white;
+    border-radius: 50%;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    backdrop-filter: blur(8px);
+  }
+  .player-folder-name {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 300;
+    font-style: italic;
+    color: white;
+    opacity: 0.9;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: opacity 0.4s ease;
+  }
+
+  .subliminal-badge {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(196,79,120,0.2);
+    border: 1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(12px);
+    color: rgba(255,255,255,0.7);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 20px;
+    pointer-events: none;
+  }
+
+  .player-ui-bottom {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(to top, rgba(10,5,8,0.85) 0%, transparent 100%);
+    padding: 40px 20px 36px;
+  }
+  .counter-row {
+    display: flex; justify-content: center;
+    margin-bottom: 20px;
+  }
+  .counter {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.45);
+    font-weight: 400;
+  }
+
+  .speed-section { margin-bottom: 20px; }
+  .speed-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .speed-header .label { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.45); }
+  .speed-header .value { font-size: 13px; font-weight: 400; color: rgba(255,255,255,0.8); }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 3px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--rose-mid);
+    border: 2px solid white;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(196,79,120,0.4);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--rose-mid);
+    border: 2px solid white;
+    cursor: pointer;
+  }
+
+  .speed-pips { display: flex; justify-content: space-between; margin-top: 6px; }
+  .speed-pips span { font-size: 9px; color: rgba(255,255,255,0.25); letter-spacing: 0.06em; text-transform: uppercase; }
+
+  .ctrl-row { display: flex; gap: 10px; }
+  .ctrl-btn {
+    flex: 1;
+    padding: 13px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    letter-spacing: 0.02em;
+  }
+  .ctrl-btn:active { opacity: 0.75; }
+  .ctrl-btn.play { background: var(--rose); color: white; }
+  .ctrl-btn.shuffle { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); border: 0.5px solid rgba(255,255,255,0.15); }
+  .ctrl-btn.shuffle.on { background: rgba(200,150,58,0.25); color: rgba(255,210,120,0.9); border-color: rgba(200,150,58,0.4); }
+
+  /* ─── Buttons ─── */
+  .btn {
+    width: 100%;
+    padding: 15px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.98); opacity: 0.85; }
+  .btn-rose { background: var(--rose); color: white; }
+  .btn-ghost { background: transparent; color: var(--ink-mid); border: 0.5px solid var(--border-mid); }
+
+  #file-input { display: none; }
+
+  /* ─── Divider ─── */
+  .divider { height: 0.5px; background: var(--border); margin: 4px 0; }
+
+  /* ─── About screen ─── */
+  .about-body { flex: 1; }
+  .about-body h2 { font-family: var(--font-display); font-size: 32px; font-weight: 300; font-style: italic; color: var(--ink); margin-bottom: 4px; }
+  .about-body .subtitle { font-size: 13px; color: var(--ink-light); margin-bottom: 28px; }
+  .about-section { margin-bottom: 24px; }
+  .about-section h3 { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rose); margin-bottom: 8px; }
+  .about-section p { font-size: 14px; color: var(--ink-mid); line-height: 1.7; font-weight: 300; }
+  .step-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+  .step-list li { display: flex; gap: 12px; align-items: flex-start; }
+  .step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--rose-pale); color: var(--rose); font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .step-list p { font-size: 13px; color: var(--ink-mid); line-height: 1.6; font-weight: 300; }
+
+  .made-with { text-align: center; font-size: 11px; color: var(--ink-light); margin-top: 32px; letter-spacing: 0.04em; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══ HOME ═══ -->
+  <div id="screen-home" class="screen active">
+    <div class="home-header">
+      <div class="eyebrow">Vision Flash</div>
+      <h1>See it.<br><em>Become it.</em></h1>
+      <p class="tagline">Flash your vision board at speeds that bypass the critical mind.</p>
+    </div>
+
+    <div class="section-label">Your folders</div>
+    <div class="folder-grid" id="folder-grid"></div>
+
+    <div style="margin-top:auto;padding-top:20px;display:flex;flex-direction:column;gap:10px;">
+      <button class="btn btn-ghost" onclick="showScreen('screen-about')">How Vision Flash works</button>
+    </div>
+  </div>
+
+  <!-- ═══ NEW FOLDER ═══ -->
+  <div id="screen-new-folder" class="screen">
+    <div class="topbar">
+      <button class="topbar-back" onclick="goHome()">Folders</button>
+    </div>
+    <div style="margin-bottom:24px;">
+      <h2 style="font-family:var(--font-display);font-size:30px;font-weight:300;font-style:italic;">New folder</h2>
+      <p style="font-size:13px;color:var(--ink-light);margin-top:4px;">Give your intention a name</p>
+    </div>
+    <div class="new-folder-body">
+      <div>
+        <div class="field-label">Folder name</div>
+        <input type="text" id="new-folder-name" placeholder="e.g. Financial abundance" maxlength="40" onkeydown="if(event.key==='Enter')createFolder()">
+      </div>
+      <button class="btn btn-rose" onclick="createFolder()">Create folder</button>
+      <button class="btn btn-ghost" onclick="goHome()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ═══ FOLDER DETAIL ═══ -->
+  <div id="screen-folder" class="screen">
+    <div class="folder-topbar">
+      <button class="icon-btn" onclick="goHome()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 13L5 8l5-5"/></svg>
+      </button>
+      <h2 id="folder-heading">Folder</h2>
+      <button class="icon-btn primary" id="play-folder-btn" onclick="openPlayer()" title="Play">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="white"><path d="M3 1.5l9 5.5-9 5.5V1.5z"/></svg>
+      </button>
+    </div>
+    <div class="photo-grid" id="photo-strip"></div>
+    <input type="file" id="file-input" accept="image/*" multiple onchange="handleFiles(event)">
+  </div>
+
+  <!-- ═══ PLAYER ═══ -->
+  <div id="screen-player" class="screen">
+    <div class="player-container">
+      <img class="player-img" id="player-img" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="">
+      <div class="player-ui-top">
+        <button class="player-back" onclick="goFolder()">←</button>
+        <div class="player-folder-name" id="player-folder-name"></div>
+      </div>
+
+      <div class="player-ui-bottom">
+        <div class="counter-row">
+          <span class="counter" id="player-counter">1 / 1</span>
+        </div>
+        <div class="speed-section">
+          <div class="speed-header">
+            <span class="label">Speed</span>
+            <span class="value" id="speed-display">slow</span>
+          </div>
+          <input type="range" min="1" max="110" value="10" step="1" id="speed-slider" oninput="updateSpeed(this.value)">
+          <div class="speed-pips">
+            <span>slow</span>
+            <span>fast</span>
+            <span>subliminal</span>
+            <span>flash</span>
+            <span>strobe</span>
+          </div>
+        </div>
+        <div class="ctrl-row">
+          <button class="ctrl-btn play" id="play-btn" onclick="togglePlay()">Pause</button>
+          <button class="ctrl-btn shuffle" id="shuffle-btn" onclick="toggleShuffle()">Shuffle</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ABOUT ═══ -->
+  <div id="screen-about" class="screen">
+    <div class="topbar">
+      <button class="topbar-back" onclick="goHome()">Back</button>
+    </div>
+    <div class="about-body">
+      <h2>How Vision Flash works</h2>
+      <p class="subtitle">The methodology behind the method</p>
+
+      <div class="about-section">
+        <h3>The idea</h3>
+        <p>Most vision boards work through conscious reinforcement — you see an image, you feel it, you return to it. Vision Flash works differently. By cycling images at increasing speeds, you move from conscious viewing into subliminal imprinting, where images register in your nervous system before the critical mind can evaluate or dismiss them.</p>
+      </div>
+
+      <div class="about-section">
+        <h3>How to use it</h3>
+        <ol class="step-list">
+          <li>
+            <div class="step-num">1</div>
+            <p><strong>Create themed folders</strong> — one intention per folder. Keep images emotionally resonant, not just aspirational.</p>
+          </li>
+          <li>
+            <div class="step-num">2</div>
+            <p><strong>Load 10–30 images</strong> that represent the feeling of your intention already fulfilled.</p>
+          </li>
+          <li>
+            <div class="step-num">3</div>
+            <p><strong>Start slow.</strong> Spend 1–2 minutes viewing each image consciously. Feel what they activate in you.</p>
+          </li>
+          <li>
+            <div class="step-num">4</div>
+            <p><strong>Gradually increase speed</strong> until images blur. You're now feeding directly to your subconscious.</p>
+          </li>
+          <li>
+            <div class="step-num">5</div>
+            <p><strong>Stay in a receptive state</strong> — soft gaze, open breath. Don't try to see the images. Let them land.</p>
+          </li>
+          <li>
+            <div class="step-num">6</div>
+            <p><strong>Slow back down</strong> and let one final image settle. Hold it. Return to your day.</p>
+          </li>
+        </ol>
+      </div>
+
+      <div class="about-section">
+        <h3>A note on images</h3>
+        <p>Choose images that evoke <em>feeling</em>, not just things. A photo of a woman laughing freely is more powerful than a photo of a sports car. The nervous system responds to emotional content, not objects.</p>
+      </div>
+
+      <p class="made-with">Vision Flash · a practice tool</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  let state = { folders: [] };
+  try { state = JSON.parse(localStorage.getItem('visionflash_v2') || '{"folders":[]}'); } catch(e) {}
+
+  let currentFolderId = null;
+  let playerInterval = null;
+  let playerIndex = 0;
+  let playerImages = [];
+  let playerShuffle = false;
+  let playerPlaying = true;
+  let currentSpeed = 10;
+
+  function save() {
+    try { localStorage.setItem('visionflash_v2', JSON.stringify(state)); } catch(e) {}
+  }
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const el = document.getElementById(id);
+    if (el) el.classList.add('active');
+  }
+
+  window.goHome = function() {
+    stopCycle();
+    showScreen('screen-home');
+    renderHome();
+  };
+
+  window.goFolder = function() {
+    stopCycle();
+    showScreen('screen-folder');
+    renderFolder();
+  };
+
+  // ── Render home ──
+  function renderHome() {
+    const grid = document.getElementById('folder-grid');
+    grid.innerHTML = '';
+
+    state.folders.forEach(f => {
+      const card = document.createElement('div');
+      card.className = 'folder-card';
+      const thumbs = f.images.slice(0, 3);
+      const thumbHTML = thumbs.length
+        ? thumbs.map(src => `<img src="${src}" loading="lazy">`).join('')
+        : `<div class="folder-thumb-empty"><svg class="folder-thumb-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>`;
+      card.innerHTML = `
+        <div class="folder-thumb-strip">${thumbHTML}</div>
+        <div class="folder-info">
+          <div class="name">${escHtml(f.name)}</div>
+          <div class="count">${f.images.length} image${f.images.length !== 1 ? 's' : ''}</div>
+        </div>`;
+      card.onclick = () => { currentFolderId = f.id; goFolder(); };
+      grid.appendChild(card);
+    });
+
+    const add = document.createElement('div');
+    add.className = 'add-folder-card';
+    add.innerHTML = '<div class="plus-circle">+</div><span>New folder</span>';
+    add.onclick = () => showScreen('screen-new-folder');
+    grid.appendChild(add);
+  }
+
+  // ── Render folder ──
+  function renderFolder() {
+    const folder = state.folders.find(f => f.id === currentFolderId);
+    if (!folder) return;
+    document.getElementById('folder-heading').textContent = folder.name;
+    document.getElementById('play-folder-btn').style.display = folder.images.length > 0 ? '' : 'none';
+
+    const strip = document.getElementById('photo-strip');
+    strip.innerHTML = '';
+
+    folder.images.forEach((src, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'photo-cell';
+      cell.innerHTML = `<img src="${src}" loading="lazy"><button class="photo-del" onclick="deletePhoto(${i},event)">×</button>`;
+      strip.appendChild(cell);
+    });
+
+    const addCell = document.createElement('div');
+    addCell.className = 'add-photo-cell';
+    addCell.innerHTML = '<span class="plus">+</span><span>Add</span>';
+    addCell.onclick = () => document.getElementById('file-input').click();
+    strip.appendChild(addCell);
+  }
+
+  // ── Create folder ──
+  window.createFolder = function() {
+    const input = document.getElementById('new-folder-name');
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    const folder = { id: Date.now().toString(), name, images: [] };
+    state.folders.push(folder);
+    save();
+    input.value = '';
+    currentFolderId = folder.id;
+    goFolder();
+  };
+
+  // ── Delete photo ──
+  window.deletePhoto = function(index, e) {
+    e.stopPropagation();
+    const folder = state.folders.find(f => f.id === currentFolderId);
+    if (!folder) return;
+    if (!confirm('Remove this image?')) return;
+    folder.images.splice(index, 1);
+    save(); renderFolder();
+  };
+
+  // ── Handle file upload ──
+  window.handleFiles = function(e) {
+    const folder = state.folders.find(f => f.id === currentFolderId);
+    if (!folder) return;
+    const files = Array.from(e.target.files);
+    let done = 0;
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        folder.images.push(ev.target.result);
+        done++;
+        if (done === files.length) { save(); renderFolder(); }
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+
+  // ── Player ──
+  window.openPlayer = function() {
+    const folder = state.folders.find(f => f.id === currentFolderId);
+    if (!folder || folder.images.length === 0) return;
+    playerImages = [...folder.images];
+    playerIndex = 0;
+    playerPlaying = true;
+    playerShuffle = false;
+    currentSpeed = 10;
+    document.getElementById('shuffle-btn').classList.remove('on');
+    document.getElementById('play-btn').textContent = 'Pause';
+    document.getElementById('speed-slider').value = currentSpeed;
+    document.getElementById('player-folder-name').textContent = folder.name;
+    showScreen('screen-player');
+    playerImages.forEach(src => { const i = new Image(); i.src = src; });
+    updateSpeed(currentSpeed);
+  };
+
+  function getLabel(v) {
+    v = parseInt(v);
+    if (v <= 12) return 'slow';
+    if (v <= 28) return 'medium';
+    if (v <= 50) return 'fast';
+    if (v <= 70) return 'very fast';
+    if (v <= 85) return 'subliminal';
+    if (v <= 95) return 'flash';
+    return 'strobe';
+  }
+
+  function getMs(v) {
+    v = parseInt(v);
+    if (v <= 30) return Math.round(3200 - v * 85);
+    if (v <= 65) return Math.round(680 - (v - 30) * 15);
+    if (v <= 85) return Math.round(155 - (v - 65) * 5.5);
+    if (v <= 95) return Math.max(12, Math.round(45 - (v - 85) * 2.2));
+    return Math.max(4, Math.round(12 - (v - 95) * 0.8));
+  }
+
+  window.updateSpeed = function(v) {
+    currentSpeed = parseInt(v);
+    document.getElementById('speed-display').textContent = getLabel(currentSpeed);
+    const img = document.getElementById('player-img');
+    const isSub = currentSpeed > 70;
+    if (isSub) {
+      const b = Math.min(22, (currentSpeed - 70) * 0.75);
+      const br = 1 + (currentSpeed - 70) * 0.008;
+      img.style.filter = `blur(${b.toFixed(1)}px) brightness(${br.toFixed(2)})`;
+      document.getElementById('player-counter').style.opacity = '0';
+    } else {
+      img.style.filter = '';
+      document.getElementById('player-counter').style.opacity = '1';
+    }
+    stopCycle();
+    if (playerPlaying) { startCycle(); }
+  };
+
+  function setTitleVisible(visible) {
+    document.getElementById('player-folder-name').style.opacity = visible ? '1' : '0';
+  }
+
+  function startCycle() {
+    setTitleVisible(false);
+    scheduleNext(true);
+  }
+
+  function stopCycle() {
+    clearTimeout(playerInterval);
+    playerInterval = null;
+    setTitleVisible(true);
+  }
+
+  function scheduleNext(immediate) {
+    if (!playerPlaying) return;
+    if (immediate) { showNextImage(); return; }
+    playerInterval = setTimeout(() => {
+      if (!playerPlaying) return;
+      showNextImage();
+    }, getMs(currentSpeed));
+  }
+
+  function showNextImage() {
+    if (!playerImages.length) return;
+    if (playerShuffle) {
+      playerIndex = Math.floor(Math.random() * playerImages.length);
+    } else {
+      playerIndex = (playerIndex + 1) % playerImages.length;
+    }
+    const img = document.getElementById('player-img');
+    const isSub = currentSpeed > 70;
+    const b = isSub ? Math.min(22, (currentSpeed - 70) * 0.75) : 0;
+    const br = isSub ? 1 + (currentSpeed - 70) * 0.008 : 1;
+    img.style.filter = isSub ? `blur(${b.toFixed(1)}px) brightness(${br.toFixed(2)})` : '';
+    if (!isSub) {
+      document.getElementById('player-counter').textContent = `${playerIndex + 1} / ${playerImages.length}`;
+    }
+    const src = playerImages[playerIndex];
+    const startTime = performance.now();
+    img.onload = null;
+    if (img.src.endsWith(src) || img.complete) {
+      img.src = src;
+      playerInterval = setTimeout(() => scheduleNext(false), getMs(currentSpeed));
+    } else {
+      img.onload = () => {
+        const elapsed = performance.now() - startTime;
+        const remaining = Math.max(0, getMs(currentSpeed) - elapsed);
+        playerInterval = setTimeout(() => scheduleNext(false), remaining);
+      };
+      img.onerror = () => scheduleNext(false);
+      img.src = src;
+    }
+  }
+
+  window.togglePlay = function() {
+    playerPlaying = !playerPlaying;
+    document.getElementById('play-btn').textContent = playerPlaying ? 'Pause' : 'Play';
+    stopCycle();
+    if (playerPlaying) { startCycle(); }
+  };
+
+  window.toggleShuffle = function() {
+    playerShuffle = !playerShuffle;
+    document.getElementById('shuffle-btn').classList.toggle('on', playerShuffle);
+  };
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Init
+  renderHome();
+  document.getElementById('new-folder-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.createFolder();
+  });
+})();
+</script>
+</body>
+</html>
